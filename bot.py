@@ -36,13 +36,19 @@ class Sql():
 			db = MySQLdb.connect(config.json['sql']['server'],config.json['sql']['user'],config.json['sql']['passwd'],config.json['sql']['db'],charset='utf8')
 			cur = db.cursor()
 			for i in range(len(p)):
-				if isinstance(p[i],str):
+				try:
 					try:
 						p[i] = p[i].decode('utf-8').encode('utf-8')
 					except:
 						if p[i]!='':
 							p[i] = p[i].decode(chardet.detect(p[i])['encoding']).encode('utf-8')
 					p[i] = db.escape_string(p[i])
+				except:
+					if isinstance(p[i],basestring):
+						try:
+							p[i] = db.escape_string(p[i].encode('utf-8'))
+						except:
+							p[i] = db.escape_string(p[i])
 			cur.execute(q % tuple(p))
 			rows = []
 			while True:
@@ -511,18 +517,37 @@ class Bot(threading.Thread):
 						self.stopnow = True
 						self.restart = True
 						quitMsg = 'Being stupid'
-						print('Restarting due to stupidness')
-					else:
-						try:
-							plugins.runHooks()
-						except Exception as inst:
-							print(inst)
-							traceback.print_exc()
+						print('Restarting due to stupidness ('+str(self.i)+add)
+					elif e == errno.ECONNRESET:
+						self.stopnow = True
+						self.restart = True
+						quitMsg = 'Being very stupid'
+						print('Restarting because connection being reset by peer')
+				time.sleep(0.1)
+				if lastLineTime+90 <= time.time(): # allow up to 60 seconds lag
+					self.stopnow = True
+					self.restart = True
+					lastLineTime = time.time()
+					quitMsg = 'No pings (1)'
+					print('Restarting due to no pings ('+str(self.i)+add)
 			except Exception as inst:
 				print(inst)
 				traceback.print_exc()
+				time.sleep(0.1)
+				if lastLineTime+90 <= time.time(): # allow up to 60 seconds lag
+					self.stopnow = True
+					self.restart = True
+					lastLineTime = time.time()
+					quitMsg = 'No pings (2)'
+					print('Restarting due to no pings ('+str(self.i)+add)
 			temp=string.split(self.readbuffer,'\n')
 			self.readbuffer=temp.pop()
+			if lastPingTime+90 <= time.time(): # allow up to 60 seconds lag
+				self.stopnow = True
+				self.restart = True
+				lastLineTime = time.time()
+				quitMsg = 'No pings(3)'
+				return
 			if lastPingTime+30 <= time.time():
 				self.send('PING %s' % time.time())
 				lastPingTime = time.time()
@@ -538,16 +563,17 @@ class Bot(threading.Thread):
 				line=string.rstrip(line)
 				line=string.split(line)
 				try:
-					if lastLineTime+30+(2*60) <= time.time(): # allow up to 2 min lag
+					lastLineTime = time.time()
+					if(line[0]=='PING'):
+						self.send('PONG %s' % line[1],True)
+						continue
+					if line[0]=='ERROR' and 'Closing Link' in line[1]:
+						time.sleep(30)
 						self.stopnow = True
 						self.restart = True
-						quitMsg = 'No pings'
-						print('Restarting due to no pings')
-					lastLineTime = time.time()
-					
-					if(line[0]=='PING'):
-						self.send('PONG %s' % line[1])
-						continue
+						quitMsg = 'Closed link'
+						print('Error when connecting, restarting bot ('+str(self.i)+add)
+						return
 					self.doMain(line)
 				except Exception as inst:
 					print('parse Error')
@@ -555,8 +581,10 @@ class Bot(threading.Thread):
 					traceback.print_exc()
 		self.send('QUIT :%s' % quitMsg)
 		self.handleQuit(self.nick,quitMsg)
-		
-		self.s.close()
+		try:
+			self.s.close()
+		except:
+			pass
 		if self.restart:
 			print('Restarting bot')
 			time.sleep(15)
