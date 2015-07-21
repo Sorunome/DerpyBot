@@ -11,6 +11,7 @@ The following variables will be initialized:
 * command - everything from message up to the first space
 * args - everything from message after the command
 * hook - boolean: if the script got called due to a hook
+
 The following python libraries are already imported:  
 * json
 * HTMLParser
