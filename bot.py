@@ -106,32 +106,24 @@ class PluginHandler():
 		self.plugins.append(p)
 	def remove(self,p):
 		self.plugins.remove(p)
-	def verifyAdmin(self,ident,nick):
-		global config
-		for a in config.json['admins']:
+	def verifyAdmin(self,ident,nick,botHandle):
+		for a in botHandle.admins:
 			if a['nick']==nick and a['ident']==ident:
 				return True
 		return False
-	def send(self,s,chan = '',mode = 'PRIVMSG'):
-		global derp
-		if chan == '':
-			chan = self.chanToSendTo
-		if '\n' in chan:
-			return
-		if not mode in ['PRIVMSG','NOTICE','TOPIC']:
-			return
-		s = ' \\ '.join(s.split('\n'))
-		if len(s) > 400:
-			s = s[0:400]+' ...'
-		derp.send('%s %s :%s' % (mode,chan,s))
-	def loadPlugin(self,plugin):
+	def send(self,network,s,chan = '',mode = 'PRIVMSG'):
+		global derps
+		for d in derps:
+			if d.name == network:
+				d.sendSafe(s,chan,mode)
+	def loadPlugin(self,plugin,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
 		if os.path.isfile(plugin):
 			for p in config.json['plugins']:
 				if p['file']==plugin:
-					self.send('\x02ERROR\x02: plugin already loaded')
+					botHandle.sendSafe('\x02ERROR\x02: plugin already loaded')
 					return
 			config.json['plugins'].append({
 				'file':plugin,
@@ -140,10 +132,10 @@ class PluginHandler():
 				'lastHook':0
 			});
 			config.save()
-			self.send('Plugin '+plugin+' loaded!')
+			botHandle.sendSafe('Plugin '+plugin+' loaded!')
 		else:
-			self.send('\x02ERROR\x02: plugin not found')
-	def unloadPlugin(self,plugin):
+			botHandle.sendSafe('\x02ERROR\x02: plugin not found')
+	def unloadPlugin(self,plugin,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
@@ -158,10 +150,10 @@ class PluginHandler():
 		if found:
 			config.json['plugins'] = newPlugins
 			config.save()
-			self.send('Removed plugin '+plugin)
+			botHandle.sendSafe('Removed plugin '+plugin)
 		else:
-			self.send('\x02ERROR\x02: plugin '+plugin+' not loaded')
-	def setHook(self,plugin,hook):
+			botHandle.sendSafe('\x02ERROR\x02: plugin '+plugin+' not loaded')
+	def setHook(self,plugin,hook,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
@@ -173,18 +165,18 @@ class PluginHandler():
 				try:
 					hook = int(hook)
 				except:
-					self.send('\x02ERROR\x02: hook isn\'t an integer')
+					botHandle.sendSafe('\x02ERROR\x02: hook isn\'t an integer')
 					break
 				p['hook'] = hook
 				config.save()
 				if hook != 0:
-					self.send('Plugin '+plugin+' is now hooked at '+str(hook)+'s')
+					botHandle.sendSafe('Plugin '+plugin+' is now hooked at '+str(hook)+'s')
 				else:
-					self.send('Removed hook on Plugin '+plugin)
+					botHandle.sendSafe('Removed hook on Plugin '+plugin)
 				break
 		if not found:
-			self.send('\x02ERROR\x02: plugin '+plugin+' not loaded')
-	def addChan(self,plugin,chan):
+			botHandle.sendSafe('\x02ERROR\x02: plugin '+plugin+' not loaded')
+	def addChan(self,plugin,chan,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
@@ -197,13 +189,13 @@ class PluginHandler():
 				if not (chan in p['channels']):
 					p['channels'].append(chan)
 					config.save()
-					self.send('Enabled '+plugin+' in '+chan)
+					botHandle.sendSafe('Enabled '+plugin+' in '+chan)
 				else:
-					self.send('\x02ERROR\x02: '+plugin+' already enabled in '+chan)
+					botHandle.sendSafe('\x02ERROR\x02: '+plugin+' already enabled in '+chan)
 				break
 		if not found:
-			self.send('\x02ERROR\x02: plugin '+plugin+' not loaded')
-	def remChan(self,plugin,chan):
+			botHandle.sendSafe('\x02ERROR\x02: plugin '+plugin+' not loaded')
+	def remChan(self,plugin,chan,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
@@ -216,13 +208,13 @@ class PluginHandler():
 				if chan in p['channels']:
 					p['channels'].remove(chan)
 					config.save()
-					self.send('Disabled '+plugin+' in '+chan)
+					botHandle.sendSafe('Disabled '+plugin+' in '+chan)
 				else:
-					self.send('\x02ERROR\x02: '+plugin+' not enabled in '+chan)
+					botHandle.sendSafe('\x02ERROR\x02: '+plugin+' not enabled in '+chan)
 				break
 		if not found:
-			self.send('\x02ERROR\x02: plugin '+plugin+' not loaded')
-	def toggleList(self,plugin):
+			botHandle.sendSafe('\x02ERROR\x02: plugin '+plugin+' not loaded')
+	def toggleList(self,plugin,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
@@ -233,21 +225,21 @@ class PluginHandler():
 				found = True
 				if len(p['channels']) > 0 and p['channels'][0] == '*':
 					p['channels'].remove('*')
-					self.send('Plugin '+plugin+' is now in whitelist mode')
+					botHandle.sendSafe('Plugin '+plugin+' is now in whitelist mode')
 				else:
 					p['channels'].insert(-0,'*')
-					self.send('Plugin '+plugin+' is now in blacklist mode')
+					botHandle.sendSafe('Plugin '+plugin+' is now in blacklist mode')
 				config.save()
 				break
 		if not found:
-			self.send('\x02ERROR\x02: plugin '+plugin+' not loaded')
-	def listPlugins(self):
+			botHandle.sendSafe('\x02ERROR\x02: plugin '+plugin+' not loaded')
+	def listPlugins(self,botHandle):
 		global config
 		s = ''
 		for p in config.json['plugins']:
 			s += p['file']+' '
-		self.send('All plugins loaded: '+s[:-1])
-	def listSinglePlugin(self,plugin):
+		botHandle.sendSafe('All plugins loaded: '+s[:-1])
+	def listSinglePlugin(self,plugin,botHandle):
 		global config
 		if not os.path.isfile(plugin):
 			plugin += '.py'
@@ -269,10 +261,10 @@ class PluginHandler():
 					s += str(p['hook'])+'s'
 				else:
 					s += 'none'
-				self.send(s)
+				botHandle.sendSafe(s)
 				break
 		if not found:
-			self.send('\x02ERROR\x02: plugin '+plugin+' not loaded')
+			botHandle.sendSafe('\x02ERROR\x02: plugin '+plugin+' not loaded')
 	def runHooks(self):
 		global config
 		variables = {
@@ -302,65 +294,66 @@ class PluginHandler():
 				plugin['lastHook'] = runTime
 				RunPlugin(plugin['file'],variables).start()
 		config.save()
-	def handleMessage(self,chan,ident,nick,message):
+	def handleMessage(self,chan,ident,nick,message,botHandle):
 		global sql,config,derp
 		chan = chan.lower()
-		self.chanToSendTo = chan
+		botHandle.chanToSendTo = chan
 		if chan[0]!='#':
-			self.chanToSendTo = nick
-		admin = self.verifyAdmin(ident,nick)
+			botHandle.chanToSendTo = nick
+		admin = self.verifyAdmin(ident,nick,botHandle)
 		command = message.split(' ')[0].lower()
 		if command != message:
 			args = ' '.join(message.split(' ')[1:])
 		else:
 			args = ''
-		
 		if admin and command == '>load':
-			self.loadPlugin(args)
+			self.loadPlugin(args,botHandle)
 		elif admin and command == '>unload':
-			self.unloadPlugin(args)
+			self.unloadPlugin(args,botHandle)
 		elif admin and (command == '>sethook' or command == '>addhook' or command == '>hook'):
 			if len(args.split(' '))==1:
-				self.send('\x02ERROR\x02: invalid use. >sethook [plugin] [seconds]')
+				botHandle.sendSafe('\x02ERROR\x02: invalid use. >sethook [plugin] [seconds]')
 			else:
-				self.setHook(args.split(' ')[0],args.split(' ')[1])
-		elif admin and command == '>remhook':
-			self.setHook(args,'0')
+				self.setHook(args.split(' ')[0],args.split(' ')[1],botHandle)
+		elif admin and (command == '>remhook' or command == '>delhook'):
+			self.setHook(args,'0',botHandle)
 		elif admin and (command == '>activate' or command == '>enable' or command == '>addlist'):
 			if len(args.split(' '))==1:
-				self.send('\x02ERROR\x02: invalid use. >addlist [plugin] [channel]')
+				botHandle.sendSafe('\x02ERROR\x02: invalid use. >addlist [plugin] [channel]')
 			else:
-				self.addChan(args.split(' ')[0],args.split(' ')[1])
+				listchan = args.split(' ')[1]
+				if listchan[0] == "#":
+					listchan = botHandle.name+listchan
+				self.addChan(args.split(' ')[0],listchan,botHandle)
 		elif admin and (command == '>deactivate' or command == '>disable' or command == '>remlist'):
 			if len(args.split(' '))==1:
-				self.send('\x02ERROR\x02: invalid use. >remlist [plugin] [channel]')
+				botHandle.sendSafe('\x02ERROR\x02: invalid use. >remlist [plugin] [channel]')
 			else:
-				self.remChan(args.split(' ')[0],args.split(' ')[1])
+				listchan = args.split(' ')[1]
+				if listchan[0] == "#":
+					listchan = botHandle.name+listchan
+				self.remChan(args.split(' ')[0],listchan,botHandle)
 		elif admin and command == '>togglelist':
-			self.toggleList(args)
+			self.toggleList(args,botHandle)
 		elif admin and command == '>list':
 			if args == '':
-				self.listPlugins()
+				self.listPlugins(botHandle)
 			else:
-				self.listSinglePlugin(args)
+				self.listSinglePlugin(args,botHandle)
 		elif admin and command == '>join':
 			if args[0] == '#':
-				for chan in config.json['channels']:
+				for chan in botHandle.chans:
 					if chan==args:
-						self.send('\x02ERROR\x02: already in channel')
+						botHandle.sendSafe('\x02ERROR\x02: already in channel')
 						break
 				else:
-					derp.send('JOIN %s' % args)
-					config.json['channels'].append(args)
-					config.save()
+					botHandle.joinChan(args)
 			else:
-				self.send('\x02ERROR\x02: not a valid channel')
+				botHandle.sendSafe('\x02ERROR\x02: not a valid channel')
 		elif admin and command == '>part' and chan[0]=='#':
-			derp.send('PART %s' % chan)
-			config.json['channels'].remove(chan)
-			config.save()
+			botHandle.partChan(chan)
 		elif admin and command == '>raw':
-			derp.send(args)
+			botHandle.send(args)
 		
 		variables = {
 			'chan':chan,
@@ -372,7 +365,7 @@ class PluginHandler():
 			'sql':sql,
 			'command':command,
 			're':re,
-			'send':self.send,
+			'send':botHandle.sendSafe,
 			'time':time,
 			'random':random,
 			'socket':socket,
@@ -384,7 +377,7 @@ class PluginHandler():
 			'hook':False
 		}
 		for plugin in config.json['plugins']:
-			if len(plugin['channels']) > 0 and ((plugin['channels'][0] == '*' and not (chan in plugin['channels'])) or (plugin['channels'][0] != '*' and (chan in plugin['channels']))):
+			if len(plugin['channels']) > 0 and ((plugin['channels'][0] == '*' and not (botHandle.name+chan in plugin['channels'])) or (plugin['channels'][0] != '*' and (botHandle.name+chan in plugin['channels']))):
 				RunPlugin(plugin['file'],variables).start()
 		
 		return
@@ -397,7 +390,7 @@ class PluginHandler():
 		self.plugins = []
 #irc bot
 class Bot(threading.Thread):
-	def __init__(self,server,port,nick,ns,ch):
+	def __init__(self,server,port,nick,ns,ch,name,admins):
 		threading.Thread.__init__(self)
 		self.stopnow = False
 		self.restart = False
@@ -408,8 +401,26 @@ class Bot(threading.Thread):
 		self.userlist = {}
 		self.chans = {}
 		self.chans = ch
+		self.name = name
+		self.admins = {}
+		self.admins = admins
 		
 		self.oircNormalLinePattern = re.compile('^(?:\x03?[0-9]{0,2}\([#OCS]\)\x0F?)<([^>]+)> (.*)')
+	def joinChan(self,chan):
+		global config
+		self.chans.append(chan)
+		self.send('JOIN %s' % chan)
+		for b in config.json['irc']:
+			if b['name'] == self.name:
+				b['channels'].append(chan)
+		config.save()
+	def partChan(self,chan):
+		self.chans.remove(chan)
+		self.send('PART %s' % chan)
+		for b in config.json['irc']:
+			if b['name'] == self.name:
+				b['channels'].remove(chan)
+		config.save()
 	def stopThread(self):
 		print('Giving signal to quit irc bot...')
 		#self.s.close()
@@ -431,6 +442,17 @@ class Bot(threading.Thread):
 			traceback.print_exc()
 			self.restart = True
 			self.stopnow = True
+	def sendSafe(self,s,chan = '',mode = 'PRIVMSG'):
+		if chan == '':
+			chan = self.chanToSendTo
+		if '\n' in chan:
+			return
+		if not mode in ['PRIVMSG','NOTICE','TOPIC']:
+			return
+		s = ' \\ '.join(s.split('\n'))
+		if len(s) > 400:
+			s = s[0:400]+' ...'
+		self.send('%s %s :%s' % (mode,chan,s))
 	def connectToIRC(self):
 		self.s = socket.socket()
 		self.s.settimeout(0.5)
@@ -481,7 +503,7 @@ class Bot(threading.Thread):
 						ident = nick+'@omnomirc'
 					else:
 						return
-				plugins.handleMessage(chan,ident,nick,message)
+				plugins.handleMessage(chan,ident,nick,message,self)
 		elif line[1]=='JOIN':
 			self.addUser(nick,chan)
 			if nick.lower()==self.nick.lower():
@@ -645,11 +667,15 @@ class Bot(threading.Thread):
 config = Config()
 sql = Sql()
 plugins = PluginHandler()
-derp = Bot(config.json['irc']['server'],config.json['irc']['port'],config.json['irc']['nick'],config.json['irc']['nickserv'],config.json['channels'])
-derp.start()
+derps = []
+for d in config.json['irc']:
+	derps.append(Bot(d['server'],d['port'],d['nick'],d['nickserv'],d['channels'],d['name'],d['admins']))
+for d in derps:
+	d.start()
 try:
 	while True:
 		time.sleep(60)
 except KeyboardInterrupt:
-	derp.stopThread()
+	for d in derps:
+		d.stopThread()
 	plugins.killPlugins()

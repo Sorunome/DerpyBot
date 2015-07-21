@@ -1,26 +1,45 @@
 {
-	"channels":[
-		"#spam"
-	],
-	"admins":[
-		{
-			"nick":"Sorunome",
-			"ident":"Sorunome@global.users.irc.omnimaga.org"
-		}
-	],
-	"irc":{
-		"nick":"DerpyBot2",
-		"server":"irc.omnimaga.org",
-		"port":6667,
-		"nickserv":""
-	},
-	"plugins":[
-
-	],
-	"sql":{
-		"passwd":"",
-		"db":"derpybot",
-		"user":"derpybot",
-		"server":"localhost"
-	}
+  "irc": [
+    {
+      "name": "omninet",
+      "nickserv": "",
+      "server": "irc.omnimaga.org",
+      "channels": [
+        "#spam"
+      ],
+      "nick": "DerpyBot2",
+      "admins": [
+        {
+          "nick": "Sorunome",
+          "ident": "sorunome@global.users.irc.omnimaga.org"
+        }
+      ],
+      "port": 6667
+    },
+    {
+      "name": "quakenet",
+      "nickserv": "",
+      "server": "irc.quakenet.org",
+      "channels": [
+        "#sorutest"
+      ],
+      "nick": "DerpyBot2",
+      "admins": [
+        {
+          "nick": "Sorunome",
+          "ident": "~Sorunome"
+        }
+      ],
+      "port": 6667
+    }
+  ],
+  "plugins": [
+    
+  ],
+  "sql": {
+    "passwd": "",
+    "db": "derpybot",
+    "user": "derpybot",
+    "server": "localhost"
+  }
 }
